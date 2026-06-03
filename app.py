@@ -1,5 +1,7 @@
 import os
+import sys
 import threading
+import subprocess
 from pathlib import Path
 import customtkinter as ctk
 from tkinter import filedialog
@@ -71,6 +73,9 @@ class App(ctk.CTk):
         self.log_box.pack(pady=10, padx=20, fill="both", expand=True)
         self.log_message("Ready. Press 'Start Recording' when Spotify is playing.")
 
+        # Check for venv automatically on startup
+        self.after(1000, self.check_and_install_venv)
+
     def log_message(self, message):
         self.log_box.configure(state="normal")
         self.log_box.insert("end", message + "\n")
@@ -98,6 +103,46 @@ class App(ctk.CTk):
             self.midi_btn.configure(state="normal")
         if self.current_midi_path:
             self.vis_btn.configure(state="normal")
+
+    def check_and_install_venv(self):
+        base_dir = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
+        venv_dir = base_dir / "venv311"
+        if not venv_dir.exists():
+            self.lock_buttons()
+            self.log_message("First run detected! Setting up the machine learning environment...")
+            self.log_message("This will download several gigabytes and take a few minutes.")
+            threading.Thread(target=self.run_venv_setup, args=(base_dir, venv_dir), daemon=True).start()
+
+    def run_venv_setup(self, base_dir, venv_dir):
+        try:
+            req_file = base_dir / "requirements.txt"
+            if not req_file.exists():
+                self.after(0, self.log_message, "Error: requirements.txt not found! Cannot setup environment automatically.")
+                return
+
+            self.after(0, self.log_message, f"Creating Python 3.11 virtual environment at {venv_dir.name}...")
+            try:
+                subprocess.run(["py", "-3.11", "-m", "venv", str(venv_dir)], check=True, capture_output=True)
+            except subprocess.CalledProcessError:
+                subprocess.run(["python", "-m", "venv", str(venv_dir)], check=True, capture_output=True)
+                
+            python_exe = venv_dir / "Scripts" / "python.exe"
+            
+            self.after(0, self.log_message, "Installing uv package manager...")
+            subprocess.run([str(python_exe), "-m", "pip", "install", "uv"], check=True, capture_output=True)
+            
+            uv_exe = venv_dir / "Scripts" / "uv.exe"
+            
+            self.after(0, self.log_message, "Downloading and installing ML models (Demucs, Basic Pitch)...")
+            result = subprocess.run([str(uv_exe), "pip", "install", "-r", str(req_file)], capture_output=True, text=True)
+            if result.returncode != 0:
+                self.after(0, self.log_message, f"Installation failed. See terminal for details or run manually.")
+            else:
+                self.after(0, self.log_message, "Environment setup complete! The application is fully ready to use.")
+        except Exception as e:
+            self.after(0, self.log_message, f"Setup error: {str(e)}")
+        finally:
+            self.after(0, self.unlock_buttons)
 
     def start_recording(self):
         if not self.recorder.wasapi_info:
@@ -195,7 +240,6 @@ class App(ctk.CTk):
             notes_path.write_text(text, encoding='utf-8')
             self.after(0, self.log_message, f"Saved visualization to: {notes_path.name}")
             
-            # Automatically open the text file for the user
             os.startfile(notes_path)
         except Exception as e:
             self.after(0, self.log_message, f"Visualization Error: {e}")

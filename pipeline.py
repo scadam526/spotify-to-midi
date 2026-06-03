@@ -8,8 +8,13 @@ class AudioPipeline:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         # Using explicit paths to the venv executables
-        python_exe = sys.executable
-        scripts_dir = Path(python_exe).parent
+        if getattr(sys, 'frozen', False):
+            base_dir = Path(sys.executable).parent
+            python_exe = base_dir / "venv311" / "Scripts" / "python.exe"
+            scripts_dir = base_dir / "venv311" / "Scripts"
+        else:
+            python_exe = sys.executable
+            scripts_dir = Path(python_exe).parent
         
         self.demucs_cmd = [python_exe, "-m", "demucs.separate"]
         self.basic_pitch_cmd = [str(scripts_dir / "basic-pitch.exe")]

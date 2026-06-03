@@ -122,19 +122,20 @@ class App(ctk.CTk):
 
             self.after(0, self.log_message, f"Creating Python 3.11 virtual environment at {venv_dir.name}...")
             try:
-                subprocess.run(["py", "-3.11", "-m", "venv", str(venv_dir)], check=True, capture_output=True)
+                creationflags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+                subprocess.run(["py", "-3.11", "-m", "venv", str(venv_dir)], check=True, capture_output=True, creationflags=creationflags)
             except subprocess.CalledProcessError:
-                subprocess.run(["python", "-m", "venv", str(venv_dir)], check=True, capture_output=True)
+                subprocess.run(["python", "-m", "venv", str(venv_dir)], check=True, capture_output=True, creationflags=creationflags)
                 
             python_exe = venv_dir / "Scripts" / "python.exe"
             
             self.after(0, self.log_message, "Installing uv package manager...")
-            subprocess.run([str(python_exe), "-m", "pip", "install", "uv"], check=True, capture_output=True)
+            subprocess.run([str(python_exe), "-m", "pip", "install", "uv"], check=True, capture_output=True, creationflags=creationflags)
             
             uv_exe = venv_dir / "Scripts" / "uv.exe"
             
             self.after(0, self.log_message, "Downloading and installing ML models (Demucs, Basic Pitch)...")
-            result = subprocess.run([str(uv_exe), "pip", "install", "-r", str(req_file)], capture_output=True, text=True)
+            result = subprocess.run([str(uv_exe), "pip", "install", "-r", str(req_file)], capture_output=True, text=True, creationflags=creationflags)
             if result.returncode != 0:
                 self.after(0, self.log_message, f"Installation failed. See terminal for details or run manually.")
             else:

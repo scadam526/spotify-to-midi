@@ -33,7 +33,8 @@ class AudioPipeline:
         demucs_args = self.demucs_cmd + ["-n", "htdemucs_6s", "--out", str(demucs_out), str(input_wav)]
         
         try:
-            subprocess.run(demucs_args, capture_output=True, text=True, check=True)
+            creationflags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+            subprocess.run(demucs_args, capture_output=True, text=True, check=True, creationflags=creationflags)
             if progress_callback: progress_callback("Demucs separation completed.")
         except subprocess.CalledProcessError as e:
             if progress_callback: progress_callback(f"Demucs Error:\n{e.stderr}")
@@ -72,7 +73,8 @@ class AudioPipeline:
         try:
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
-            subprocess.run(bp_args, capture_output=True, text=True, check=True, encoding="utf-8", env=env)
+            creationflags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+            subprocess.run(bp_args, capture_output=True, text=True, check=True, encoding="utf-8", env=env, creationflags=creationflags)
             if progress_callback: progress_callback("Basic Pitch conversion completed successfully!")
                 
             # Basic Pitch outputs `<stem_name>_basic_pitch.mid`

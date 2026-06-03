@@ -76,11 +76,16 @@ class AudioRecorder:
             self.stream.close()
             self.stream = None
 
-        self._save_to_wav()
+        return self._save_to_wav()
 
     def _save_to_wav(self):
+        captured_audio = True
         if not self.frames:
-            return
+            captured_audio = False
+            # Generate 1 second of silence so the file is still created validly
+            bytes_per_sample = self.p.get_sample_size(pyaudio.paInt16)
+            silence = b'\x00' * (self.rate * self.channels * bytes_per_sample)
+            self.frames.append(silence)
             
         wf = wave.open(self.output_filename, 'wb')
         wf.setnchannels(self.channels)
@@ -88,6 +93,7 @@ class AudioRecorder:
         wf.setframerate(self.rate)
         wf.writeframes(b''.join(self.frames))
         wf.close()
+        return captured_audio
 
     def terminate(self):
         if self.is_recording:

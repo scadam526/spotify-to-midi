@@ -43,6 +43,17 @@ class App(ctk.CTk):
         self.dir_button = ctk.CTkButton(self.dir_frame, text="Change", command=self.change_dir, width=80)
         self.dir_button.pack(side="right", padx=10, pady=10)
 
+        # Settings
+        self.settings_frame = ctk.CTkFrame(self)
+        self.settings_frame.pack(pady=(0, 10), padx=20, fill="x")
+        
+        self.device_label = ctk.CTkLabel(self.settings_frame, text="Processing Mode:")
+        self.device_label.pack(side="left", padx=10, pady=10)
+        
+        self.device_var = ctk.StringVar(value="Auto (NVIDIA GPU)")
+        self.device_menu = ctk.CTkOptionMenu(self.settings_frame, values=["Auto (NVIDIA GPU)", "CPU (Integrated Graphics)"], variable=self.device_var)
+        self.device_menu.pack(side="left", padx=10, pady=10)
+
         # Controls
         self.controls_frame = ctk.CTkFrame(self)
         self.controls_frame.pack(pady=10, padx=20, fill="x")
@@ -164,8 +175,12 @@ class App(ctk.CTk):
         self.stop_btn.configure(state="disabled")
         self.log_message("Stopping recording...")
         
-        self.recorder.stop_recording()
-        self.log_message("Recording saved. Ready to process.")
+        captured_audio = self.recorder.stop_recording()
+        if not captured_audio:
+            self.log_message("Warning: No audio frames detected! Please make sure music is actively playing. A silent file was saved.")
+        else:
+            self.log_message("Recording saved. Ready to process.")
+            
         self.current_piano_path = None
         self.unlock_buttons()
 
@@ -201,7 +216,8 @@ class App(ctk.CTk):
 
     def run_separate(self):
         pipeline = AudioPipeline(str(self.output_dir))
-        success, piano_path = pipeline.separate_stems(self.current_recording_path, progress_callback=lambda m: self.after(0, self.log_message, m))
+        device_choice = "cpu" if "CPU" in self.device_var.get() else "auto"
+        success, piano_path = pipeline.separate_stems(self.current_recording_path, progress_callback=lambda m: self.after(0, self.log_message, m), device=device_choice)
         if success and piano_path:
             self.current_piano_path = piano_path
         self.after(0, self.finish_task)
@@ -219,7 +235,8 @@ class App(ctk.CTk):
     def run_midi(self, target_path):
         pipeline = AudioPipeline(str(self.output_dir))
         track_name = self.current_recording_path.stem if self.current_recording_path else target_path.stem
-        success = pipeline.convert_to_midi(target_path, progress_callback=lambda m: self.after(0, self.log_message, m), track_name=track_name)
+        device_choice = "cpu" if "CPU" in self.device_var.get() else "auto"
+        success = pipeline.convert_to_midi(target_path, progress_callback=lambda m: self.after(0, self.log_message, m), track_name=track_name, device=device_choice)
         if success:
             self.current_midi_path = self.output_dir / f"{track_name}_piano.mid"
         self.after(0, self.finish_task)

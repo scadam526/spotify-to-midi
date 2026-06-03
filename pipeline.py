@@ -19,7 +19,7 @@ class AudioPipeline:
         self.demucs_cmd = [python_exe, "-m", "demucs.separate"]
         self.basic_pitch_cmd = [str(scripts_dir / "basic-pitch.exe")]
         
-    def separate_stems(self, input_wav_path, progress_callback=None):
+    def separate_stems(self, input_wav_path, progress_callback=None, device="auto"):
         input_wav = Path(input_wav_path)
         if not input_wav.exists():
             if progress_callback: progress_callback("Error: Input WAV file not found.")
@@ -31,6 +31,8 @@ class AudioPipeline:
         demucs_out.mkdir(parents=True, exist_ok=True)
         
         demucs_args = self.demucs_cmd + ["-n", "htdemucs_6s", "--out", str(demucs_out), str(input_wav)]
+        if device == "cpu":
+            demucs_args += ["-d", "cpu"]
         
         try:
             creationflags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
@@ -57,7 +59,7 @@ class AudioPipeline:
             
         return True, final_piano_wav
 
-    def convert_to_midi(self, piano_stem_path, progress_callback=None, track_name=None):
+    def convert_to_midi(self, piano_stem_path, progress_callback=None, track_name=None, device="auto"):
         piano_stem_path = Path(piano_stem_path)
         if not piano_stem_path.exists():
             if progress_callback: progress_callback("Error: Piano stem WAV file not found.")
@@ -73,6 +75,9 @@ class AudioPipeline:
         try:
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
+            if device == "cpu":
+                env["CUDA_VISIBLE_DEVICES"] = "-1"
+
             creationflags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
             subprocess.run(bp_args, capture_output=True, text=True, check=True, encoding="utf-8", env=env, creationflags=creationflags)
             if progress_callback: progress_callback("Basic Pitch conversion completed successfully!")

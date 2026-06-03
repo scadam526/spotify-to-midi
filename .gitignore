@@ -1,0 +1,11 @@
+venv/
+venv311/
+__pycache__/
+*.pyc
+.env
+build/
+dist/
+*.spec
+*.wav
+*.mid
+error_log.txt

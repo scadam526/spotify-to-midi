@@ -1,0 +1,6 @@
+pyaudiowpatch
+soundfile
+numpy
+demucs
+basic-pitch
+customtkinter

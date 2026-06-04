@@ -59,7 +59,7 @@ class AudioPipeline:
             
         return True, final_piano_wav
 
-    def convert_to_midi(self, piano_stem_path, progress_callback=None, track_name=None, device="auto"):
+    def convert_to_midi(self, piano_stem_path, progress_callback=None, track_name=None, device="auto", key_root="Auto", key_scale="Major"):
         piano_stem_path = Path(piano_stem_path)
         if not piano_stem_path.exists():
             if progress_callback: progress_callback("Error: Piano stem WAV file not found.")
@@ -93,7 +93,7 @@ class AudioPipeline:
                 
             try:
                 from visualize_midi import generate_midi_text
-                text = generate_midi_text(new_midi_name)
+                text = generate_midi_text(new_midi_name, key_root=key_root, key_scale=key_scale)
                 notes_path = midi_out / f"{track_name}_piano_notes.txt"
                 notes_path.write_text(text, encoding='utf-8')
             except Exception as ex:

@@ -2,7 +2,23 @@ import sys
 import pretty_midi
 from pathlib import Path
 
-def generate_midi_text(midi_path):
+def get_note_name(pitch, use_flats=False):
+    FLATS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+    SHARPS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    names = FLATS if use_flats else SHARPS
+    octave = (pitch // 12) - 1
+    return f"{names[pitch % 12]}{octave}"
+
+def generate_midi_text(midi_path, key_root="Auto", key_scale="Major"):
+    is_flat_key = False
+    if key_root != "Auto":
+        flat_keys = {
+            'Major': ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'],
+            'Minor': ['D', 'G', 'C', 'F', 'Bb', 'Eb', 'Ab']
+        }
+        if key_root in flat_keys.get(key_scale, []):
+            is_flat_key = True
+
     pm = pretty_midi.PrettyMIDI(str(midi_path))
     notes = []
     for inst in pm.instruments:
@@ -39,7 +55,7 @@ def generate_midi_text(midi_path):
     for start_time, group in groups:
         # Sort notes from lowest to highest pitch
         group.sort(key=lambda x: x.pitch)
-        names = [pretty_midi.note_number_to_name(n.pitch) for n in group]
+        names = [get_note_name(n.pitch, use_flats=is_flat_key) for n in group]
         
         minutes = int(start_time // 60)
         seconds = start_time % 60
@@ -72,16 +88,23 @@ def generate_midi_text(midi_path):
     return "\n".join(lines)
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("midi_path")
+    parser.add_argument("--key-root", default="Auto")
+    parser.add_argument("--key-scale", default="Major")
+    
     if len(sys.argv) < 2:
-        print("Usage: python visualize_midi.py <path_to_midi>")
+        print("Usage: python visualize_midi.py <path_to_midi> [--key-root ROOT] [--key-scale SCALE]")
         sys.exit(1)
         
-    midi_path = Path(sys.argv[1])
+    args = parser.parse_args()
+    midi_path = Path(args.midi_path)
     if not midi_path.exists():
         print(f"File not found: {midi_path}")
         sys.exit(1)
         
-    text = generate_midi_text(midi_path)
+    text = generate_midi_text(midi_path, args.key_root, args.key_scale)
     
     out_path = midi_path.with_name(f"{midi_path.stem}_notes.txt")
     out_path.write_text(text, encoding='utf-8')

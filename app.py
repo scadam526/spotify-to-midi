@@ -51,8 +51,19 @@ class App(ctk.CTk):
         self.device_label.pack(side="left", padx=10, pady=10)
         
         self.device_var = ctk.StringVar(value="Auto (NVIDIA GPU)")
-        self.device_menu = ctk.CTkOptionMenu(self.settings_frame, values=["Auto (NVIDIA GPU)", "CPU (Integrated Graphics)"], variable=self.device_var)
-        self.device_menu.pack(side="left", padx=10, pady=10)
+        self.device_menu = ctk.CTkOptionMenu(self.settings_frame, values=["Auto (NVIDIA GPU)", "CPU (Integrated Graphics)"], variable=self.device_var, width=150)
+        self.device_menu.pack(side="left", padx=(10, 20), pady=10)
+
+        self.key_label = ctk.CTkLabel(self.settings_frame, text="Key Accidentals:")
+        self.key_label.pack(side="left", padx=(10, 5), pady=10)
+
+        self.key_root_var = ctk.StringVar(value="Auto")
+        self.key_root_menu = ctk.CTkOptionMenu(self.settings_frame, values=["Auto", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"], variable=self.key_root_var, width=70)
+        self.key_root_menu.pack(side="left", padx=5, pady=10)
+
+        self.key_scale_var = ctk.StringVar(value="Major")
+        self.key_scale_menu = ctk.CTkOptionMenu(self.settings_frame, values=["Major", "Minor"], variable=self.key_scale_var, width=80)
+        self.key_scale_menu.pack(side="left", padx=5, pady=10)
 
         # Controls
         self.controls_frame = ctk.CTkFrame(self)
@@ -236,7 +247,10 @@ class App(ctk.CTk):
         pipeline = AudioPipeline(str(self.output_dir))
         track_name = self.current_recording_path.stem if self.current_recording_path else target_path.stem
         device_choice = "cpu" if "CPU" in self.device_var.get() else "auto"
-        success = pipeline.convert_to_midi(target_path, progress_callback=lambda m: self.after(0, self.log_message, m), track_name=track_name, device=device_choice)
+        key_root = self.key_root_var.get()
+        key_scale = self.key_scale_var.get()
+        
+        success = pipeline.convert_to_midi(target_path, progress_callback=lambda m: self.after(0, self.log_message, m), track_name=track_name, device=device_choice, key_root=key_root, key_scale=key_scale)
         if success:
             self.current_midi_path = self.output_dir / f"{track_name}_piano.mid"
         self.after(0, self.finish_task)
@@ -252,8 +266,11 @@ class App(ctk.CTk):
 
     def run_visualize(self):
         try:
+            key_root = self.key_root_var.get()
+            key_scale = self.key_scale_var.get()
+            
             from visualize_midi import generate_midi_text
-            text = generate_midi_text(self.current_midi_path)
+            text = generate_midi_text(self.current_midi_path, key_root=key_root, key_scale=key_scale)
             notes_path = self.current_midi_path.with_name(f"{self.current_midi_path.stem}_notes.txt")
             notes_path.write_text(text, encoding='utf-8')
             self.after(0, self.log_message, f"Saved visualization to: {notes_path.name}")
